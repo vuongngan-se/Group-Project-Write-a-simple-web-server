@@ -8,7 +8,11 @@
 
 #include "sws.h"
 
+#if defined(__GNUC__)
+static void	usage(void) __attribute__((__noreturn__));
+#else
 static void	usage(void);
+#endif
 
 /*
  * Portable implementation of strlcpy for systems lacking it.
@@ -191,7 +195,9 @@ handle_client(int client_fd, const struct sockaddr_storage *client_addr,
 			http_send_headers(client_fd, 200, "text/html",
 			    (off_t)html_len, now);
 			if (!is_head) {
-				(void)write(client_fd, html_buf, html_len);
+				if (write(client_fd, html_buf, html_len) < 0) {
+					warn("write html_buf");
+				}
 			}
 			bytes_sent = (off_t)html_len;
 			free(html_buf);
@@ -274,7 +280,7 @@ main(int argc, char *argv[])
 			break;
 		case 'h':
 			usage();
-			/* NOTREACHED */
+			break;
 		case 'i':
 			conf.iflag = optarg;
 			break;
@@ -295,7 +301,7 @@ main(int argc, char *argv[])
 		case '?':
 		default:
 			usage();
-			/* NOTREACHED */
+			break;
 		}
 	}
 	argc -= optind;

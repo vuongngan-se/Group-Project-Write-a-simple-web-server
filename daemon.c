@@ -118,9 +118,11 @@ daemon_init(const struct server_conf *conf)
 	/* Redirect standard descriptors to /dev/null */
 	devnull = open("/dev/null", O_RDWR);
 	if (devnull >= 0) {
-		(void)dup2(devnull, STDIN_FILENO);
-		(void)dup2(devnull, STDOUT_FILENO);
-		(void)dup2(devnull, STDERR_FILENO);
+		if (dup2(devnull, STDIN_FILENO) < 0 ||
+		    dup2(devnull, STDOUT_FILENO) < 0 ||
+		    dup2(devnull, STDERR_FILENO) < 0) {
+			warn("dup2 /dev/null");
+		}
 		if (devnull > STDERR_FILENO) {
 			(void)close(devnull);
 		}

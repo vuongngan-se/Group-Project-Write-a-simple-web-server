@@ -84,11 +84,15 @@ logger_write(const struct log_entry *entry)
 	}
 
 	if (g_debug_mode) {
-		(void)write(STDOUT_FILENO, line_buf, len);
+		if (write(STDOUT_FILENO, line_buf, len) < 0) {
+			/* Ignore write error on stdout */
+		}
 	}
 
 	if (g_log_fd >= 0) {
-		(void)write(g_log_fd, line_buf, len);
+		if (write(g_log_fd, line_buf, len) < 0) {
+			/* Ignore write error on log file */
+		}
 	}
 }
 

@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <err.h>
 
 #include "response.h"
 
@@ -105,7 +106,9 @@ http_send_headers(int fd, int status, const char *mime, off_t size,
 	}
 
 	(void)snprintf(header_buf + len, sizeof(header_buf) - len, "\r\n");
-	(void)write(fd, header_buf, strlen(header_buf));
+	if (write(fd, header_buf, strlen(header_buf)) < 0) {
+		warn("write response headers");
+	}
 }
 
 /*
@@ -136,7 +139,9 @@ http_send_error(int fd, int status, const char *msg, int is_head)
 	http_send_headers(fd, status, "text/html", (off_t)body_len, 0);
 
 	if (!is_head) {
-		(void)write(fd, body, body_len);
+		if (write(fd, body, body_len) < 0) {
+			warn("write error body");
+		}
 	}
 }
 

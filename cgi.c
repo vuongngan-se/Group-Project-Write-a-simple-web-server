@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <err.h>
 
 #include "cgi.h"
 
@@ -90,7 +91,9 @@ cgi_execute(int client_fd, const struct cgi_params *params)
 	    "HTTP/1.0 200 OK\r\n"
 	    "Server: sws/1.0\r\n"
 	    "Connection: close\r\n");
-	(void)write(client_fd, buf, strlen(buf));
+	if (write(client_fd, buf, strlen(buf)) < 0) {
+		warn("write cgi header");
+	}
 
 	while ((nread = read(pipe_out[0], buf, sizeof(buf))) > 0) {
 		total = 0;
