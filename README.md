@@ -1,6 +1,6 @@
 # CS631 APUE Group Project: sws (Simple Web Server)
 
-## 1. Member 1: Core Network & Daemon Engine
+## 1. Member 1: Core Network & Daemon Engine ( Vuong Le Bao Ngan)
 - **Files**: `main.c`, `network.h`, `network.c`, `daemon.h`, `daemon.c`, `sws.h`, `Makefile`
 - **Features**:
   - CLI argument parsing via `getopt(3)`: `-c`, `-d`, `-h`, `-i`, `-l`, `-p`, and docroot `dir`.
@@ -12,7 +12,7 @@
 
 ---
 
-## 2. Member 3: VFS, Security, User Directories & Directory Indexing
+## 2. Member 3: VFS, Security, User Directories & Directory Indexing ( Nguyen Dang Khoi)
 - **Files**: `uri.h`, `uri.c`, `dir_index.h`, `dir_index.c`, `mime.h`, `mime.c`
 - **Features**:
   - URI resolution against docroot and protection against path traversal attacks (`../` returns 403 Forbidden).
@@ -22,7 +22,7 @@
 
 ---
 
-## 3. Member 4: CGI Engine, Logging Subsystem & DevOps/QA
+## 3. Member 4: CGI Engine, Logging Subsystem & DevOps/QA ( Ngo Van Lap)
 - **Files**: `cgi.h`, `cgi.c`, `logger.h`, `logger.c`, `test_sws.sh`, `checklist`
 - **Features**:
   - RFC 3875 Common Gateway Interface (CGI) execution under `/cgi-bin/...` with environment variables.
