@@ -1,39 +1,39 @@
-# Member 4: CGI Engine, Logging Subsystem & DevOps/QA
+# CS631 APUE Group Project: sws (Simple Web Server)
 
-## Overview
-This module manages external execution, access logging, and quality verification:
-1. **CGI Engine (`cgi.c`, `cgi.h`)**:
-   - RFC 3875 implementation for `/cgi-bin/...` endpoints.
-   - Sets environment variables: `REQUEST_METHOD`, `QUERY_STRING`, `SCRIPT_NAME`, `PATH_INFO`, `SERVER_PROTOCOL`, `SERVER_SOFTWARE`, `REMOTE_ADDR`, `SERVER_PORT`.
-   - Executes scripts using `fork(2)`, `pipe(2)`, `dup2(2)`, and `execl(2)`.
-   - Relays CGI output to client socket.
-2. **Logging Subsystem (`logger.c`, `logger.h`)**:
-   - Implements Apache common log variation: `%a %t "%r" %>s %b`
-   - Formats timestamps in GMT ISO 8601: `YYYY-MM-DDTHH:MM:SSZ`.
-   - Appends safely to log file (`-l file`) or prints to `stdout` (`-d`).
-3. **Automated Test Suite (`test_sws.sh`)**:
-   - End-to-end regression tests verifying all required features (GET, HEAD, 404, 403, directory indexing, CGI, logging).
-4. **Homework Checklist (`checklist`)**:
-   - Verified checklist answering all grading requirements.
+## 1. Member 1: Core Network & Daemon Engine
+- **Files**: `main.c`, `network.h`, `network.c`, `daemon.h`, `daemon.c`, `sws.h`, `Makefile`
+- **Features**:
+  - CLI argument parsing via `getopt(3)`: `-c`, `-d`, `-h`, `-i`, `-l`, `-p`, and docroot `dir`.
+  - Dual-stack IPv4 and IPv6 socket binding using `getaddrinfo(3)` with `AI_PASSIVE`.
+  - Main event loop with `poll(2)`.
+  - Standard APUE daemonization (`setsid`, two-phase `fork`, stdio redirection).
+  - Multi-process concurrency (`fork` per request) and single-connection sequential mode (`-d`).
+  - Signal handling (`SIGCHLD` reaping with `waitpid`, `SIGTERM`/`SIGINT`, `SIGPIPE` ignore).
 
-## API Usage Example
-```c
-/* Logging access */
-struct log_entry entry;
-entry.client_ip = "192.168.1.10";
-entry.req_time = time(NULL);
-entry.request_line = "GET /index.html HTTP/1.0";
-entry.status_code = 200;
-entry.bytes_sent = 1024;
-logger_write(&entry);
+---
 
-/* CGI execution */
-struct cgi_params params;
-params.script_path = "/var/www/cgi-bin/hello.cgi";
-params.script_name = "/cgi-bin/hello.cgi";
-params.method = "GET";
-params.query_string = "name=world";
-params.client_ip = "127.0.0.1";
-params.server_port = "8080";
-cgi_execute(client_fd, &params);
+## 2. Member 3: VFS, Security, User Directories & Directory Indexing
+- **Files**: `uri.h`, `uri.c`, `dir_index.h`, `dir_index.c`, `mime.h`, `mime.c`
+- **Features**:
+  - URI resolution against docroot and protection against path traversal attacks (`../` returns 403 Forbidden).
+  - User directory resolution: translates `/~<user>/` to `/home/<user>/sws/` via `getpwnam(3)`.
+  - Directory Indexing: generates alphanumeric HTML index when `index.html` is absent; ignores dotfiles.
+  - MIME type detection using `libmagic` (`magic(5)`) with fallback extension mappings.
+
+---
+
+## 3. Member 4: CGI Engine, Logging Subsystem & DevOps/QA
+- **Files**: `cgi.h`, `cgi.c`, `logger.h`, `logger.c`, `test_sws.sh`, `checklist`
+- **Features**:
+  - RFC 3875 Common Gateway Interface (CGI) execution under `/cgi-bin/...` with environment variables.
+  - Process isolation using `fork(2)`, `pipe(2)`, `dup2(2)`, and `execl(2)`.
+  - Logging subsystem with Apache common format: `%a %t "%r" %>s %b` (GMT ISO 8601 timestamps).
+  - Automated test suite (`test_sws.sh`) and course checklist.
+
+---
+
+## 4. Compilation & Usage
+```bash
+make
+./sws -p 8080 -c /path/to/cgi-bin -l /path/to/sws.log /path/to/docroot
 ```
