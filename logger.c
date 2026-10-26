@@ -9,6 +9,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>

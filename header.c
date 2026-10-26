@@ -7,6 +7,14 @@
 #define _GNU_SOURCE
 #endif
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#endif
+
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>

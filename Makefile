@@ -1,13 +1,14 @@
 # CS631 APUE Group Project: sws - Simple Web Server
-# Member 1: Core Network & Daemon Engine
+# Integrated Build Configuration
 
 CC ?= gcc
 CFLAGS ?= -Wall -Werror -Wextra -Wformat=2 \
 	  -Wjump-misses-init -Wlogical-op -Wpedantic -Wshadow \
 	  -std=c99 -D_GNU_SOURCE -O2
-LDFLAGS ?=
+LDFLAGS ?= -lmagic
 
-SRCS = main.c network.c daemon.c
+SRCS = main.c network.c daemon.c http.c header.c response.c \
+       uri.c dir_index.c mime.c cgi.c logger.c
 OBJS = $(SRCS:.c=.o)
 TARGET = sws
 

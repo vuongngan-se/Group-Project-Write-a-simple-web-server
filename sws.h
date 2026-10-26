@@ -75,13 +75,21 @@ size_t	portable_strlcpy(char *dst, const char *src, size_t siz);
 #endif
 
 /*
- * Function prototypes for Member 1 subsystems
+ * Subsystem interfaces
  */
 #include "network.h"
 #include "daemon.h"
+#include "http.h"
+#include "header.h"
+#include "response.h"
+#include "uri.h"
+#include "dir_index.h"
+#include "mime.h"
+#include "cgi.h"
+#include "logger.h"
 
 /*
- * Default client connection handler
+ * Client connection handler
  */
 void	handle_client(int client_fd, const struct sockaddr_storage *client_addr,
 	    socklen_t addr_len, const struct server_conf *conf);

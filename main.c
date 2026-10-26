@@ -55,53 +55,195 @@ usage(void)
 }
 
 /*
- * Baseline connection handler for Member 1 testing.
- * Can be plugged into by Members 2, 3, and 4.
+ * Read a single CRLF or LF terminated line from file descriptor.
+ */
+static int
+read_line(int fd, char *buf, size_t maxlen)
+{
+	size_t idx;
+	ssize_t n;
+	char ch;
+
+	idx = 0;
+	while (idx + 1 < maxlen) {
+		n = read(fd, &ch, 1);
+		if (n <= 0) {
+			break;
+		}
+		if (ch == '\r') {
+			continue;
+		}
+		if (ch == '\n') {
+			break;
+		}
+		buf[idx++] = ch;
+	}
+	buf[idx] = '\0';
+	return (idx > 0 || n > 0) ? (int)idx : -1;
+}
+
+/*
+ * Full HTTP request processing pipeline integrating all member modules.
  */
 void
 handle_client(int client_fd, const struct sockaddr_storage *client_addr,
     socklen_t addr_len, const struct server_conf *conf)
 {
-	char host[NI_MAXHOST], serv[NI_MAXSERV];
-	char buf[REQ_BUF_SIZE], resp[REQ_BUF_SIZE];
-	ssize_t nread, nwritten;
-	int error;
+	struct http_request req;
+	struct resource_info res;
+	struct log_entry entry;
+	char host[NI_MAXHOST], serv[NI_MAXSERV], req_line[HTTP_LINE_MAX];
+	char idx_path[PATH_MAX], *html_buf;
+	const char *mime;
+	size_t html_len;
+	off_t bytes_sent;
+	time_t now;
+	int error, file_fd, is_head, status;
 
-	(void)conf;
+	now = time(NULL);
+	html_buf = NULL;
+	bytes_sent = -1;
 
 	error = getnameinfo((const struct sockaddr *)client_addr, addr_len,
 	    host, sizeof(host), serv, sizeof(serv),
 	    NI_NUMERICHOST | NI_NUMERICSERV);
 	if (error != 0) {
 		(void)snprintf(host, sizeof(host), "unknown");
-		(void)snprintf(serv, sizeof(serv), "0");
 	}
 
-	nread = read(client_fd, buf, sizeof(buf) - 1);
-	if (nread <= 0) {
+	if (read_line(client_fd, req_line, sizeof(req_line)) <= 0) {
 		return;
 	}
-	buf[nread] = '\0';
 
-	if (conf->dflag != 0) {
-		(void)printf("[debug] client %s:%s connected\n", host, serv);
-		(void)fflush(stdout);
+	status = http_parse_request_line(req_line, &req);
+	if (status != 200) {
+		http_send_error(client_fd, status, NULL, 0);
+		entry.client_ip = host;
+		entry.request_line = req_line;
+		entry.status_code = status;
+		entry.bytes_sent = -1;
+		entry.req_time = now;
+		logger_write(&entry);
+		return;
 	}
 
-	/* Initial HTTP/1.0 baseline response */
-	(void)snprintf(resp, sizeof(resp),
-	    "HTTP/1.0 200 OK\r\n"
-	    "Server: %s\r\n"
-	    "Content-Type: text/plain\r\n"
-	    "Connection: close\r\n"
-	    "\r\n"
-	    "sws daemon running.\r\n"
-	    "Docroot: %s\r\n",
-	    SWS_VERSION, conf->docroot);
+	is_head = (strcmp(req.method, "HEAD") == 0);
 
-	nwritten = write(client_fd, resp, strlen(resp));
-	if (nwritten < 0) {
-		warn("write to client failed");
+	http_parse_headers(client_fd, &req);
+
+	status = uri_resolve(req.uri, conf->docroot, conf->cflag, &res);
+	if (status != 200) {
+		http_send_error(client_fd, status, NULL, is_head);
+		entry.client_ip = host;
+		entry.request_line = req.raw_line;
+		entry.status_code = status;
+		entry.bytes_sent = -1;
+		entry.req_time = now;
+		logger_write(&entry);
+		return;
+	}
+
+	/* CGI execution */
+	if (res.resource_type == SWS_TYPE_CGI) {
+		struct cgi_params cgi;
+		char port_str[16];
+		char *q;
+
+		(void)snprintf(port_str, sizeof(port_str), "%d", conf->port);
+		q = strchr(req.uri, '?');
+		cgi.script_path = res.resolved_path;
+		cgi.script_name = req.uri;
+		cgi.method = req.method;
+		cgi.query_string = (q != NULL) ? q + 1 : "";
+		cgi.client_ip = host;
+		cgi.server_port = port_str;
+
+		if (cgi_execute(client_fd, &cgi) < 0) {
+			http_send_error(client_fd, 500, "CGI failed", is_head);
+			status = 500;
+		}
+		entry.client_ip = host;
+		entry.request_line = req.raw_line;
+		entry.status_code = status;
+		entry.bytes_sent = -1;
+		entry.req_time = now;
+		logger_write(&entry);
+		return;
+	}
+
+	/* Directory listing or index.html */
+	if (res.resource_type == SWS_TYPE_DIR) {
+		if (dir_has_index_file(res.resolved_path, idx_path,
+		    sizeof(idx_path))) {
+			(void)snprintf(res.resolved_path,
+			    sizeof(res.resolved_path), "%s", idx_path);
+			if (stat(res.resolved_path, &res.sb) < 0) {
+				http_send_error(client_fd, 404, NULL, is_head);
+				return;
+			}
+			res.resource_type = SWS_TYPE_FILE;
+		} else {
+			if (dir_generate_index_html(res.resolved_path, req.uri,
+			    &html_buf, &html_len) < 0) {
+				http_send_error(client_fd, 500, NULL, is_head);
+				return;
+			}
+			http_send_headers(client_fd, 200, "text/html",
+			    (off_t)html_len, now);
+			if (!is_head) {
+				(void)write(client_fd, html_buf, html_len);
+			}
+			bytes_sent = (off_t)html_len;
+			free(html_buf);
+
+			entry.client_ip = host;
+			entry.request_line = req.raw_line;
+			entry.status_code = 200;
+			entry.bytes_sent = bytes_sent;
+			entry.req_time = now;
+			logger_write(&entry);
+			return;
+		}
+	}
+
+	/* Regular file serving */
+	if (res.resource_type == SWS_TYPE_FILE) {
+		if (req.if_modified_since != (time_t)-1 &&
+		    res.sb.st_mtime <= req.if_modified_since) {
+			http_send_headers(client_fd, 304, NULL, 0,
+			    res.sb.st_mtime);
+			entry.client_ip = host;
+			entry.request_line = req.raw_line;
+			entry.status_code = 304;
+			entry.bytes_sent = 0;
+			entry.req_time = now;
+			logger_write(&entry);
+			return;
+		}
+
+		file_fd = open(res.resolved_path, O_RDONLY);
+		if (file_fd < 0) {
+			http_send_error(client_fd,
+			    (errno == EACCES) ? 403 : 404, NULL, is_head);
+			return;
+		}
+
+		mime = mime_get_type(res.resolved_path);
+		http_send_headers(client_fd, 200, mime, res.sb.st_size,
+		    res.sb.st_mtime);
+		if (!is_head) {
+			http_stream_fd(file_fd, client_fd);
+		}
+		(void)close(file_fd);
+		bytes_sent = res.sb.st_size;
+
+		entry.client_ip = host;
+		entry.request_line = req.raw_line;
+		entry.status_code = 200;
+		entry.bytes_sent = bytes_sent;
+		entry.req_time = now;
+		logger_write(&entry);
+		return;
 	}
 }
 
@@ -185,6 +327,12 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (logger_init(conf.lflag, conf.dflag) < 0) {
+		warn("logger_init failed");
+	}
+
+	(void)mime_init();
+
 	daemon_setup_signals();
 
 	num_fds = net_init(&conf, listen_fds, MAX_LISTEN_FDS);
@@ -194,6 +342,9 @@ main(int argc, char *argv[])
 	net_serve(&conf, listen_fds, num_fds);
 
 	net_close_all(listen_fds, num_fds);
+
+	mime_cleanup();
+	logger_cleanup();
 
 	return EXIT_SUCCESS;
 }
