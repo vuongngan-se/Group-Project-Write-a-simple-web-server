@@ -45,8 +45,71 @@
 
 ---
 
-## 5. Compilation & Usage
+## 5. Hướng dẫn Biên dịch & Chạy trên Linux (Build & Run Guide)
+
+### 5.1. Cài đặt các gói phụ thuộc (Prerequisites)
+Server sử dụng thư viện `libmagic` để nhận diện MIME type. Trên Linux, cài đặt bằng:
+* **Ubuntu / Debian / WSL / Kali**:
+  ```bash
+  sudo apt update
+  sudo apt install -y build-essential libmagic-dev curl
+  ```
+* **Fedora / RHEL / CentOS**:
+  ```bash
+  sudo dnf install -y gcc make file-devel curl
+  ```
+
+### 5.2. Biên dịch (Compilation)
 ```bash
+make clean
 make
-./sws -p 8080 -c /path/to/cgi-bin -l /path/to/sws.log /path/to/docroot
 ```
+*Lệnh này dùng `gcc` với các cờ nghiêm ngặt `-Wall -Werror -Wextra -Wformat=2 -Wpedantic` và sinh ra file thực thi `./sws`.*
+
+### 5.3. Các chế độ chạy Server (Execution Modes)
+
+#### Chế độ 1: Gỡ lỗi (Debug Mode `-d`) - Chạy foreground, in log ra màn hình
+```bash
+./sws -d -p 8080 /path/to/docroot
+```
+*(Dừng server bằng tổ hợp phím `Ctrl + C`)*
+
+#### Chế độ 2: Daemonize (Chạy ngầm dưới nền, ghi log vào file)
+```bash
+./sws -p 8080 -l sws.log /path/to/docroot
+```
+* Xem log thời gian thực: `tail -f sws.log`
+* Dừng server chạy ngầm: `pkill sws`
+
+#### Chế độ 3: Đầy đủ tính năng CGI (`-c dir`)
+```bash
+./sws -d -p 8080 -c /path/to/cgi-bin -l sws.log /path/to/docroot
+```
+
+### 5.4. Kiểm thử (Testing)
+
+1. **Mở trình duyệt Web**:
+   Truy cập: `http://localhost:8080/`
+
+2. **Dùng lệnh `curl`**:
+   * Kiểm tra GET request (200 OK):
+     ```bash
+     curl -i http://localhost:8080/
+     ```
+   * Kiểm tra HEAD request (chỉ lấy header):
+     ```bash
+     curl -I http://localhost:8080/index.html
+     ```
+   * Kiểm tra chống tấn công Path Traversal (403 Forbidden):
+     ```bash
+     curl -i --path-as-is http://localhost:8080/../../../etc/passwd
+     ```
+   * Kiểm tra If-Modified-Since (304 Not Modified):
+     ```bash
+     curl -i -H "If-Modified-Since: Mon, 26 Oct 2026 15:00:00 GMT" http://localhost:8080/index.html
+     ```
+
+3. **Chạy kịch bản kiểm thử tự động toàn diện**:
+   ```bash
+   sh test_sws.sh
+   ```
