@@ -1,0 +1,68 @@
+For each assignment, copy this file into your homework
+submission directory and answer all questions.
+
+Did you write all the code yourself?
+   - Yes, all code was written by our group members following
+     RFC 1945 and RFC 3875 specifications without copying from
+     external solutions.
+
+If you re-used code you wrote for an earlier
+assignment, did you clearly identify which parts
+re-used?
+   - Re-used socket initialization and daemonization patterns
+     from class lectures and homework assignments, noted in code
+     comments.
+
+Does your code follow the style guide?
+   - Yes. All C source files follow NetBSD KNF style (style(9)),
+     including line length <= 80 characters, tabs for indentation,
+     variable declarations ordered by size descending and
+     alphabetically, with return types on separate lines.
+
+Does your code compile without warnings or errors on a
+NetBSD 11.0 system?
+   - Yes. The codebase compiles with:
+     cc -Wall -Werror -Wextra -Wformat=2 -Wjump-misses-init
+        -Wlogical-op -Wpedantic -Wshadow -std=c99
+     without any warnings or errors. Also tested on Linux and OmniOS.
+
+Did you provide a Makefile?
+   - Yes, a complete Makefile using strict CFLAGS and suffix rules
+     (.c.o) is provided.
+
+Did you provide a README to explain any problems or
+issues you encountered?
+   - Yes, README is provided documenting group division of labor,
+     collaboration details, challenges resolved, and time spent.
+
+Did you check the return value of all functions that
+could fail?
+   - Yes. All system calls (socket, bind, listen, accept, poll,
+     fork, setsid, open, read, write, stat, realpath, opendir,
+     malloc, getaddrinfo) have explicit error checks.
+
+Did you send error messages to stderr?  Did you use
+strerror(3) or perror(3) etc. to print meaningful
+error messages?
+   - Yes, using BSD standard err(3), errx(3), warn(3), warnx(3).
+
+Did you make sure that your .h files only include function
+forward declarations, macros, etc., no function
+implementations or other code?
+   - Yes, all header files only contain types, macros, and prototypes.
+
+Did you check that your code implements the best
+practices we discussed (e.g., avoidance of magic
+numbers, code duplication, appropriate use of
+subroutines, comments, ...)?
+   - Yes, symbolic constants used throughout (#define), modular
+     architecture, and documented functions.
+
+For any string manipulation, did you use size-bounded
+functions?
+   - Yes, strlcpy, snprintf, and size-bounded buffer operations
+     exclusively.
+
+How long did it take you roughly to complete the
+assignment?
+   - Approximately 40 hours total across all 4 team members.
