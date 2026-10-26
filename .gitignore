@@ -1,0 +1,11 @@
+# Build binaries
+sws
+*.o
+*.core
+*.tar
+sws.1.pdf
+
+# Editor / OS files
+.DS_Store
+*.swp
+*~
